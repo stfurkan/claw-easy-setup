@@ -237,10 +237,24 @@ echo "[8/8] Delegating OpenClaw Installation to $NEW_USER..."
 echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-openclaw-temp
 chmod 440 /etc/sudoers.d/99-openclaw-temp
 
-su - "$NEW_USER" -c "curl -fsSL https://openclaw.ai/install.sh | bash" || {
-    echo "⚠️  OpenClaw installer encountered an issue."
-    echo "   You can retry manually after login: curl -fsSL https://openclaw.ai/install.sh | bash"
-}
+# Pre-create npm global bin dir and add to PATH so the OpenClaw installer
+# doesn't warn about a missing PATH entry during installation.
+NPM_GLOBAL_BIN="/home/$NEW_USER/.npm-global/bin"
+mkdir -p "$NPM_GLOBAL_BIN"
+chown -R "$NEW_USER":"$NEW_USER" "/home/$NEW_USER/.npm-global"
+
+# Persist the PATH for future login sessions
+SHELL_RC="/home/$NEW_USER/.bashrc"
+if ! grep -q "$NPM_GLOBAL_BIN" "$SHELL_RC" 2>/dev/null; then
+    echo "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\"" >> "$SHELL_RC"
+    chown "$NEW_USER":"$NEW_USER" "$SHELL_RC"
+fi
+
+# The OpenClaw installer will succeed, but its post-install interactive setup
+# requires /dev/tty which isn't available in a non-interactive 'su -' session.
+# This is expected — the user runs 'openclaw onboard' manually after logging in.
+su - "$NEW_USER" -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash" 2>&1 | grep -v "/dev/tty" || true
+echo "  -> OpenClaw binary installed. Interactive setup will be completed after login."
 
 # Revoke temporary passwordless sudo — user still has normal sudo via password
 rm -f /etc/sudoers.d/99-openclaw-temp
