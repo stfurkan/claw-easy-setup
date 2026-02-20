@@ -91,3 +91,17 @@ In the future, when you SSH into your server, do so like this:
 
 Once inside, use the OpenClaw CLI like normal:
 `openclaw gateway status`
+
+---
+
+## ⚠️ Disclaimer
+
+This project is provided **"as-is"** for **educational and informational purposes only**. The authors and contributors take **no responsibility** for any damage, data loss, server lockouts, security breaches, or any other issues that may arise from using these scripts.
+
+**By using this software, you acknowledge that:**
+- You are solely responsible for your server and its security.
+- You should always **test on a disposable server** before deploying to production.
+- You should **maintain backups** and have a recovery plan (e.g., VPS console access) before running any automation scripts.
+- No script can guarantee 100% security. Always follow your own due diligence.
+
+This project is not affiliated with or endorsed by OpenClaw. Use at your own risk.
