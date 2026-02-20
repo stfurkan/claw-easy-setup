@@ -116,6 +116,13 @@ fi
 echo "[3/8] Installing necessary dependencies..."
 apt-get install -y -q curl wget git unzip sudo ufw fail2ban unattended-upgrades systemd-timesyncd
 
+# Detect the correct SSH service name (Ubuntu uses 'ssh', others use 'sshd')
+if systemctl list-unit-files ssh.service &>/dev/null && systemctl list-unit-files ssh.service | grep -q ssh.service; then
+    SSH_SERVICE="ssh"
+else
+    SSH_SERVICE="sshd"
+fi
+
 echo "[4/8] Creating non-root user ($NEW_USER)..."
 if id "$NEW_USER" &>/dev/null; then
     echo "User $NEW_USER already exists. Skipping creation."
@@ -186,7 +193,7 @@ EOF
 # CRITICAL: Validate config syntax BEFORE restarting to prevent lockout
 if sshd -t; then
     echo "  -> SSH configuration syntax validated successfully."
-    systemctl restart sshd || systemctl restart ssh
+    systemctl restart "$SSH_SERVICE"
 else
     echo "❌ CRITICAL: SSH configuration syntax error detected!"
     echo "   Removing the drop-in file to prevent lockout..."
@@ -224,7 +231,19 @@ systemctl enable systemd-timesyncd
 systemctl start systemd-timesyncd
 
 echo "[8/8] Delegating OpenClaw Installation to $NEW_USER..."
-su - "$NEW_USER" -c "curl -fsSL https://openclaw.ai/install.sh | bash"
+# Temporarily grant passwordless sudo so the OpenClaw installer can install
+# its own dependencies (e.g., Node.js) without a terminal password prompt.
+# This is immediately revoked after the installer finishes.
+echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-openclaw-temp
+chmod 440 /etc/sudoers.d/99-openclaw-temp
+
+su - "$NEW_USER" -c "curl -fsSL https://openclaw.ai/install.sh | bash" || {
+    echo "⚠️  OpenClaw installer encountered an issue."
+    echo "   You can retry manually after login: curl -fsSL https://openclaw.ai/install.sh | bash"
+}
+
+# Revoke temporary passwordless sudo — user still has normal sudo via password
+rm -f /etc/sudoers.d/99-openclaw-temp
 
 echo "================================================="
 echo "✅ Server Provisioning & OpenClaw Installation Complete!"
