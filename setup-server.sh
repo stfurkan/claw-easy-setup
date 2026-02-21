@@ -254,9 +254,10 @@ if ! grep -q "$NPM_GLOBAL_BIN" "$SHELL_RC" 2>/dev/null; then
 fi
 
 # Run the OpenClaw installer with full interactive terminal access.
-# Connecting to /dev/tty bypasses the tee log redirection and gives the
-# installer a real terminal, so its interactive setup wizard works seamlessly.
-su - "$NEW_USER" -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash" < /dev/tty > /dev/tty 2>&1 || true
+# 'su -' creates a new session without a controlling terminal, so /dev/tty is
+# unavailable. The 'script' command allocates a real pseudo-TTY, allowing the
+# installer's interactive setup wizard to work seamlessly.
+script -qc "su - \"$NEW_USER\" -c 'export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash'" /dev/null < /dev/tty || true
 
 # Revoke temporary passwordless sudo — user still has normal sudo via password
 rm -f /etc/sudoers.d/99-openclaw-temp
