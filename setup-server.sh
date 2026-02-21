@@ -91,9 +91,6 @@ if ! id "$NEW_USER" &>/dev/null; then
     echo ""
 fi
 
-# Safely enable process logging now that all interactive input is resolved
-exec > >(tee -a /var/log/openclaw-setup.log) 2>&1
-
 echo "[1/8] Updating server packages..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -q
@@ -253,11 +250,18 @@ if ! grep -q "$NPM_GLOBAL_BIN" "$SHELL_RC" 2>/dev/null; then
     chown "$NEW_USER":"$NEW_USER" "$SHELL_RC"
 fi
 
-# Run the OpenClaw installer with full interactive terminal access.
-# 'su -' creates a new session without a controlling terminal, so /dev/tty is
-# unavailable. The 'script' command allocates a real pseudo-TTY, allowing the
-# installer's interactive setup wizard to work seamlessly.
-script -qc "su - \"$NEW_USER\" -c 'export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash'" /dev/null < /dev/tty || true
+# Run the OpenClaw installer interactively as the new user.
+# IMPORTANT: We download first, then execute separately.
+# 'curl ... | bash' consumes stdin with the script content, leaving no stdin
+# for interactive prompts. By downloading to a file first, bash's stdin remains
+# the terminal, allowing the installer's interactive setup wizard to work.
+# We use 'sudo -u' instead of 'su -' because sudo preserves the controlling
+# terminal, while 'su -' creates a new session without one (/dev/tty fails).
+INSTALL_SCRIPT=$(mktemp)
+curl -fsSL https://openclaw.ai/install.sh -o "$INSTALL_SCRIPT"
+chmod +x "$INSTALL_SCRIPT"
+sudo -u "$NEW_USER" -i bash -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && bash $INSTALL_SCRIPT" || true
+rm -f "$INSTALL_SCRIPT"
 
 # Revoke temporary passwordless sudo — user still has normal sudo via password
 rm -f /etc/sudoers.d/99-openclaw-temp
