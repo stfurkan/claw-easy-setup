@@ -233,7 +233,7 @@ dpkg-reconfigure -f noninteractive unattended-upgrades
 systemctl enable systemd-timesyncd
 systemctl start systemd-timesyncd
 
-echo "[8/8] Delegating OpenClaw Installation to $NEW_USER..."
+echo "[8/8] Installing & Setting Up OpenClaw as $NEW_USER..."
 # Temporarily grant passwordless sudo so the OpenClaw installer can install
 # its own dependencies (e.g., Node.js) without a terminal password prompt.
 # This is immediately revoked after the installer finishes.
@@ -253,37 +253,31 @@ if ! grep -q "$NPM_GLOBAL_BIN" "$SHELL_RC" 2>/dev/null; then
     chown "$NEW_USER":"$NEW_USER" "$SHELL_RC"
 fi
 
-# The OpenClaw installer will succeed, but its post-install interactive setup
-# requires /dev/tty which isn't available in a non-interactive 'su -' session.
-# This is expected — the user runs 'openclaw onboard' manually after logging in.
-su - "$NEW_USER" -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash" 2>&1 | grep -v "/dev/tty" || true
-echo "  -> OpenClaw binary installed. Interactive setup will be completed after login."
+# Run the OpenClaw installer with full interactive terminal access.
+# Connecting to /dev/tty bypasses the tee log redirection and gives the
+# installer a real terminal, so its interactive setup wizard works seamlessly.
+su - "$NEW_USER" -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && curl -fsSL https://openclaw.ai/install.sh | bash" < /dev/tty > /dev/tty 2>&1 || true
 
 # Revoke temporary passwordless sudo — user still has normal sudo via password
 rm -f /etc/sudoers.d/99-openclaw-temp
 
+echo ""
 echo "================================================="
-echo "✅ Server Provisioning & OpenClaw Installation Complete!"
+echo "✅ Server Provisioning & OpenClaw Setup Complete!"
 echo "Your server is updated, fully firewalled, and running."
 echo "Fail2Ban is active to protect your login endpoints."
 echo ""
-echo "CRITICAL NEXT STEPS:"
-echo "Your SSH Port has fundamentally changed from 22 to $NEW_SSH_PORT."
-echo "Root login is disabled. You must log in as $NEW_USER."
+echo "IMPORTANT INFO:"
+echo "  SSH Port: $NEW_SSH_PORT"
+echo "  Username: $NEW_USER"
+echo "  Server:   $SERVER_IP"
 echo ""
-echo "1. Reboot the server to apply kernel updates:"
-echo "   sudo reboot"
+echo "HOW TO CONNECT:"
+echo "  ssh -p $NEW_SSH_PORT $NEW_USER@$SERVER_IP"
 echo ""
-echo "2. Log into your new user account:"
-echo "   ssh -p $NEW_SSH_PORT $NEW_USER@$SERVER_IP"
-echo ""
-echo "3. Run the OpenClaw Interactive Setup Wizard:"
-echo "   openclaw onboard --install-daemon"
-echo ""
-echo "4. Access your dashboard (SSH Tunnel):"
-echo "   ssh -p $NEW_SSH_PORT -L 18789:localhost:18789 $NEW_USER@$SERVER_IP"
-echo ""
-echo "   Finally, open your Web Browser to: http://localhost:18789"
+echo "ACCESS YOUR DASHBOARD (SSH Tunnel — run from your LOCAL computer):"
+echo "  ssh -p $NEW_SSH_PORT -L 18789:localhost:18789 $NEW_USER@$SERVER_IP"
+echo "  Then open: http://localhost:18789"
 
 if [ "$SSH_KEYS_DETECTED" = true ]; then
     echo ""
@@ -294,9 +288,17 @@ if [ "$SSH_KEYS_DETECTED" = true ]; then
     echo "After you confirm you can log in with your SSH key,"
     echo "run this command on the server to disable password login:"
     echo ""
-    echo "   sudo sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config.d/00-openclaw-security.conf && sudo sshd -t && sudo systemctl restart sshd"
+    echo "  sudo sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config.d/00-openclaw-security.conf && sudo sshd -t && sudo systemctl restart sshd"
     echo ""
     echo "⚠️  Only run this AFTER verifying key-based login works!"
 fi
 
+echo ""
 echo "================================================="
+echo "🔄 The server will reboot in 10 seconds to apply kernel updates."
+echo "   It may take about a minute to come back online."
+echo "   After reboot, reconnect with:"
+echo "   ssh -p $NEW_SSH_PORT $NEW_USER@$SERVER_IP"
+echo "================================================="
+sleep 10
+reboot
