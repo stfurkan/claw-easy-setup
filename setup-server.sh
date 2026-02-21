@@ -263,6 +263,23 @@ chmod a+rx "$INSTALL_SCRIPT"
 sudo -u "$NEW_USER" -i bash -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && bash $INSTALL_SCRIPT" || true
 rm -f "$INSTALL_SCRIPT"
 
+# Enable systemd lingering so user services persist without an active login,
+# then install the OpenClaw daemon. Lingering starts the user's systemd instance
+# at boot. We need to set XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS so
+# 'systemctl --user' can connect to the user's D-Bus from a root context.
+loginctl enable-linger "$NEW_USER"
+sleep 2  # Wait for systemd to initialize the user instance
+
+NEW_USER_UID=$(id -u "$NEW_USER")
+export XDG_RUNTIME_DIR="/run/user/$NEW_USER_UID"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$NEW_USER_UID/bus"
+
+sudo -u "$NEW_USER" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+    PATH="$NPM_GLOBAL_BIN:$PATH" \
+    bash -c "openclaw daemon install && openclaw daemon start"
+
 # Revoke temporary passwordless sudo — user still has normal sudo via password
 rm -f /etc/sudoers.d/99-openclaw-temp
 
