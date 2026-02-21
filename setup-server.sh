@@ -259,7 +259,7 @@ fi
 # terminal, while 'su -' creates a new session without one (/dev/tty fails).
 INSTALL_SCRIPT=$(mktemp)
 curl -fsSL https://openclaw.ai/install.sh -o "$INSTALL_SCRIPT"
-chmod +x "$INSTALL_SCRIPT"
+chmod a+rx "$INSTALL_SCRIPT"
 sudo -u "$NEW_USER" -i bash -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && bash $INSTALL_SCRIPT" || true
 rm -f "$INSTALL_SCRIPT"
 
