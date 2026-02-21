@@ -270,7 +270,12 @@ USER_DBUS_BUS="unix:path=/run/user/$NEW_USER_UID/bus"
 INSTALL_SCRIPT=$(mktemp)
 curl -fsSL https://openclaw.ai/install.sh -o "$INSTALL_SCRIPT"
 chmod a+rx "$INSTALL_SCRIPT"
-sudo -u "$NEW_USER" -i bash -c "export XDG_RUNTIME_DIR='$USER_XDG_RUNTIME_DIR' DBUS_SESSION_BUS_ADDRESS='$USER_DBUS_BUS' PATH='$NPM_GLOBAL_BIN:\$PATH' && bash $INSTALL_SCRIPT" || true
+sudo -u "$NEW_USER" \
+    XDG_RUNTIME_DIR="$USER_XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$USER_DBUS_BUS" \
+    PATH="$NPM_GLOBAL_BIN:$PATH" \
+    HOME="/home/$NEW_USER" \
+    bash "$INSTALL_SCRIPT" || true
 rm -f "$INSTALL_SCRIPT"
 
 # Revoke temporary passwordless sudo — user still has normal sudo via password
