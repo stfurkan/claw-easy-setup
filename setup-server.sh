@@ -61,6 +61,9 @@ if [ "$NEW_SSH_PORT" == "22" ]; then
     sleep 2
 fi
 
+# Detect the server's public IP using local tools only (no external APIs)
+SERVER_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}' || hostname -I | awk '{print $1}')
+
 echo "================================================="
 echo "   OpenClaw Automated Server Setup & Hardening   "
 echo "================================================="
@@ -272,13 +275,13 @@ echo "1. Reboot the server to apply kernel updates:"
 echo "   sudo reboot"
 echo ""
 echo "2. Log into your new user account:"
-echo "   ssh -p $NEW_SSH_PORT $NEW_USER@<YOUR_SERVER_IP>"
+echo "   ssh -p $NEW_SSH_PORT $NEW_USER@$SERVER_IP"
 echo ""
 echo "3. Run the OpenClaw Interactive Setup Wizard:"
 echo "   openclaw onboard --install-daemon"
 echo ""
 echo "4. Access your dashboard (SSH Tunnel):"
-echo "   ssh -p $NEW_SSH_PORT -L 18789:localhost:18789 $NEW_USER@<YOUR_SERVER_IP>"
+echo "   ssh -p $NEW_SSH_PORT -L 18789:localhost:18789 $NEW_USER@$SERVER_IP"
 echo ""
 echo "   Finally, open your Web Browser to: http://localhost:18789"
 
