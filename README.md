@@ -50,46 +50,40 @@ bash <(curl -s https://raw.githubusercontent.com/stfurkan/claw-easy-setup/main/s
 bash <(curl -s https://raw.githubusercontent.com/stfurkan/claw-easy-setup/main/setup-server.sh) -u myadmin -p 8888
 ```
 
-Grab a coffee! By the time the script finishes, your server will be heavily fortified, and the OpenClaw environment will be ready.
+The script will harden your server, install OpenClaw, and launch the **interactive setup wizard** — all in one sitting. Have your API key ready! After setup completes, the server **automatically reboots** to apply kernel updates. It may take about a minute to come back online.
 
 ---
 
-## 🚇 CLI Setup & Accessing the Control UI
+## 🚇 After Setup
 
-After the server provisioning finishes, your raw OpenClaw environment is ready. Now you must run the interactive CLI setup to configure your API keys and daemon!
+**1. Reconnect to your fortified server:**
 
-**1. Log into your fortified server:**
-*(Remember, your port is now `2222`, and your user is `openclaw`!)*
+The server reboots automatically after setup. Wait about a minute, then connect using the SSH command shown at the end of the script output:
 ```bash
 ssh -p 2222 openclaw@<YOUR_SERVER_IP>
 ```
 
-**2. Run the internal Setup Wizard:**
-```bash
-openclaw onboard --install-daemon
-```
-*Follow the interactive prompts in your terminal to provide API keys and configure the assistant.*
+**2. (If SSH Keys detected) Lock down password login:**
 
-**3. (If SSH Keys detected) Lock down password login:**
 After confirming you can log in with your SSH key, run this on the server to disable password authentication:
 ```bash
 sudo sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config.d/00-openclaw-security.conf && sudo sshd -t && sudo systemctl restart sshd
 ```
 > ⚠️ **Only run this after verifying key-based login works!** If you skip this step, your server will still be protected by Fail2Ban, but key-only login is the gold standard.
 
-**4. Accessing the Dashboard Setup (Optional but recommended):**
-If you ever want to access the visual OpenClaw Dashboard securely without exposing port 18789 to the internet, run this **SSH Tunnel** command from your **Local Computer** terminal (not the server):
+**3. Access the Dashboard (Optional but recommended):**
+
+To access the OpenClaw Dashboard securely without exposing port 18789 to the internet, run this **SSH Tunnel** command from your **local computer** (not the server):
 ```bash
 ssh -p 2222 -L 18789:localhost:18789 openclaw@<YOUR_SERVER_IP>
 ```
-*Leave that terminal window open to keep the tunnel active. Open your browser and go to your dashboard:*
-[http://localhost:18789](http://localhost:18789)
+Leave that terminal open and visit: [http://localhost:18789](http://localhost:18789)
 
 ### Useful Maintenance Commands
-In the future, when you SSH into your server, do so like this:
+Connect to your server:
 `ssh -p 2222 openclaw@<YOUR_SERVER_IP>`
 
-Once inside, use the OpenClaw CLI like normal:
+Check gateway status:
 `openclaw gateway status`
 
 ---
