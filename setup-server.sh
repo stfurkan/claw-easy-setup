@@ -237,11 +237,20 @@ echo "[8/8] Installing & Setting Up OpenClaw as $NEW_USER..."
 echo "$NEW_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-openclaw-temp
 chmod 440 /etc/sudoers.d/99-openclaw-temp
 
-# Pre-create npm global bin dir and add to PATH so the OpenClaw installer
-# doesn't warn about a missing PATH entry during installation.
-NPM_GLOBAL_BIN="/home/$NEW_USER/.npm-global/bin"
+# Pre-create npm global directory and configure npm to use it as the global prefix.
+# Without this, 'npm install -g' installs to /usr (needs root), but the OpenClaw
+# installer runs as the user — so 'npm prefix -g' must point to ~/.npm-global.
+NPM_GLOBAL="/home/$NEW_USER/.npm-global"
+NPM_GLOBAL_BIN="$NPM_GLOBAL/bin"
 mkdir -p "$NPM_GLOBAL_BIN"
-chown -R "$NEW_USER":"$NEW_USER" "/home/$NEW_USER/.npm-global"
+chown -R "$NEW_USER":"$NEW_USER" "$NPM_GLOBAL"
+
+# Set the npm prefix for the user (this makes 'npm install -g' use ~/.npm-global)
+NPMRC="/home/$NEW_USER/.npmrc"
+if ! grep -q "prefix=" "$NPMRC" 2>/dev/null; then
+    echo "prefix=$NPM_GLOBAL" >> "$NPMRC"
+    chown "$NEW_USER":"$NEW_USER" "$NPMRC"
+fi
 
 # Persist the PATH for future login sessions
 SHELL_RC="/home/$NEW_USER/.bashrc"
