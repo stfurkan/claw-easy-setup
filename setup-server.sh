@@ -260,7 +260,7 @@ fi
 INSTALL_SCRIPT=$(mktemp)
 curl -fsSL https://openclaw.ai/install.sh -o "$INSTALL_SCRIPT"
 chmod a+rx "$INSTALL_SCRIPT"
-sudo -u "$NEW_USER" -i bash -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && bash $INSTALL_SCRIPT" || true
+sudo -u "$NEW_USER" -i bash -c "export PATH=\"$NPM_GLOBAL_BIN:\$PATH\" && bash $INSTALL_SCRIPT --no-gum" || true
 rm -f "$INSTALL_SCRIPT"
 
 # Enable systemd lingering so user services persist without an active login,
